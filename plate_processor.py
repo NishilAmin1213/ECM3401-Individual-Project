@@ -3,14 +3,14 @@ import itertools
 from ves import query_VES
 
 
-def get_combos(text, length):
+def _get_combos(text, length):
     res = []
     for i in range(len(text) - (length-1)):
         res.append(text[i:i+length])
     return res
 
 
-def fill_blank(text, options):
+def _fill_blank(text, options):
     res = []
     for char in options:
         # add the string with the replaced '?' to the res array
@@ -18,7 +18,7 @@ def fill_blank(text, options):
     return res
 
 
-def convert(char):
+def _convert(char):
     # define a dictionary of mappings between letters and numbers
     map_dict = {'O': '0',
                 '0': 'O',
@@ -32,41 +32,41 @@ def convert(char):
         # return the new character
         return map_dict[char]
     except KeyError:
-        # if there is an error in doing so, the letter cannot be converted, so return the origninal character
+        # if there is an error in doing so, the letter cannot be _converted, so return the origninal character
         return char
 
 
-def check_or_correct_area_code(area_code):
+def _check_or_correct_area_code(area_code):
     # store results in a set to avoid duplicates
     res = set()
 
     if len(area_code) >= 2:
         # if the area code is too long, add options of the correct length using permutations of the characters provided
-        res.update(get_combos(area_code, 2))
+        res.update(_get_combos(area_code, 2))
     elif len(area_code) == 1:
         # there is one character missing which could be before or after the existing one
         # add the possible options of the correct length including the character provided
         # character options are A-Z minus I, Q and Z
-        res.update(fill_blank('?' + area_code, 'ABCDEFGHJKLMNPRSTUVWXY'))
-        res.update(fill_blank(area_code + '?', 'ABCDEFGHJKLMNPRSTUVWXY'))
+        res.update(_fill_blank('?' + area_code, 'ABCDEFGHJKLMNPRSTUVWXY'))
+        res.update(_fill_blank(area_code + '?', 'ABCDEFGHJKLMNPRSTUVWXY'))
 
     # return the res set - this holds possible options for the area code
     return res
 
 
-def check_or_correct_year(year):
+def _check_or_correct_year(year):
     # stores results in a set to avoid duplicates
     res = set()
 
     if len(year) >= 2:
         # the year is too long - get all permutation of pairs from it
-        res.update(get_combos(year, 2))
+        res.update(_get_combos(year, 2))
     elif len(year) == 1:
         # there is one character missing which could be before or after the existing one
         # add the possible options of the correct length including the character provided
         # character options are 012567 for the first character and 0-9 for the second character
-        res.update(fill_blank('?' + year, '012567'))
-        res.update(fill_blank(year + '?', '0123456789'))
+        res.update(_fill_blank('?' + year, '012567'))
+        res.update(_fill_blank(year + '?', '0123456789'))
     else:
         # no year was found, so return all possible years - hard coded in an array as this does not change
         res.update(['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15',
@@ -78,26 +78,26 @@ def check_or_correct_year(year):
     return res
 
 
-def check_or_correct_final_three(final_three):
+def _check_or_correct_final_three(final_three):
     # stores results in a set to avoid duplicates
     res = set()
 
     if len(final_three) >= 3:
         # if the area code is too long, add options of the correct length using permutations of the characters provided
-        res.update(get_combos(final_three, 3))
+        res.update(_get_combos(final_three, 3))
     elif len(final_three) == 2:
         # there is one character missing which could be before or after or in between the existing ones
         # add the possible options of the correct length including the character provided
         # character options are A-Z minus I and Q
-        res.update(fill_blank('?' + final_three, 'ABCDEFGHJKLMNPRSTUVWXYZ'))
-        res.update(fill_blank(final_three + '?', 'ABCDEFGHJKLMNPRSTUVWXYZ'))
-        res.update(fill_blank(final_three[0] + '?' + final_three[1], 'ABCDEFGHJKLMNPRSTUVWXYZ'))
+        res.update(_fill_blank('?' + final_three, 'ABCDEFGHJKLMNPRSTUVWXYZ'))
+        res.update(_fill_blank(final_three + '?', 'ABCDEFGHJKLMNPRSTUVWXYZ'))
+        res.update(_fill_blank(final_three[0] + '?' + final_three[1], 'ABCDEFGHJKLMNPRSTUVWXYZ'))
 
     # return the res set - this holds possible options for the final three characters
     return res
 
 
-def filter_all_guesses(color, make, all_guesses):
+def _filter_all_guesses(color, make, all_guesses):
     # score matching guesses in the array
     correct_guesses = []
     # check each plate in the array provided
@@ -117,7 +117,7 @@ def filter_all_guesses(color, make, all_guesses):
     return correct_guesses
 
 
-def validate_plate(plate):
+def _validate_plate(plate):
     # the number plate length must be 7
     if len(plate) != 7:
         # the number plate is too long or too short, return False
@@ -154,25 +154,25 @@ def validate_plate(plate):
     return True
 
 
-def tune_plate(plate):
+def _perform_adjustments(plate):
     # the number plate length must be 7
     if len(plate) == 7:
 
         # as the number plate is the correct length
-        # convert any characters that have been read in wrong
+        # _convert any characters that have been read in wrong
         res = ''
         for character, index in zip(plate, range(len(plate))):
             if index in [2, 3]:
                 # the character must be a number
                 if not character.isnumeric():
-                    # character is not a number, so convert it if possible
-                    character = convert(character)
+                    # character is not a number, so _convert it if possible
+                    character = _convert(character)
                     pass
             else:
                 # the character must be a letter
                 if not character.isalpha():
-                    # character is not a letter, so convert it if possible
-                    character = convert(character)
+                    # character is not a letter, so _convert it if possible
+                    character = _convert(character)
                     pass
 
             # add the character to the result string
@@ -194,7 +194,7 @@ def tune_plate(plate):
 # IF GJ07HPW has a missing J, it can be read as GO_7HPW or G_07HPW - which makes a difference on success of prediction
 
 
-def find_missing_chars(invalid_plate):
+def _find_missing_chars(invalid_plate):
     print('finding missing characters')
     res = []
     # We know that I cannot be found in a number plate, therefore if an I is found, replace it with a 1
@@ -225,9 +225,9 @@ def find_missing_chars(invalid_plate):
     print(right)
 
     # check or correct each component of the number plate
-    left = check_or_correct_area_code(left)
-    centre = check_or_correct_year(centre)
-    right = check_or_correct_final_three(right)
+    left = _check_or_correct_area_code(left)
+    centre = _check_or_correct_year(centre)
+    right = _check_or_correct_final_three(right)
 
     # get the number of permutations of results
     cartesian_product = itertools.product(left, centre, right)
@@ -249,7 +249,7 @@ def find_missing_chars(invalid_plate):
 
 
 # this function is when a plate is valid, but does not match the vehicle characteristics
-def full_plate_match(plate):
+def _generate_plate_variants(plate):
     res = []
     # for each character in the array
     for index in range(len(plate)):
@@ -259,16 +259,16 @@ def full_plate_match(plate):
         # based on the index of the '?' get all possible values it can be and plate it into the plate
         if index in '01':
             # the area code
-            res = res + fill_blank(tmp, 'ABCDEFGHJKLMNPRSTUVWXY')
+            res = res + _fill_blank(tmp, 'ABCDEFGHJKLMNPRSTUVWXY')
         elif index in '456':
             # the last 3 letters
-            res = res + fill_blank(tmp, 'ABCDEFGHJKLMNPRSTUVWXYZ')
+            res = res + _fill_blank(tmp, 'ABCDEFGHJKLMNPRSTUVWXYZ')
         elif index in '2':
             # the first number
-            res = res + fill_blank(tmp, '012567')
+            res = res + _fill_blank(tmp, '012567')
         else:
             # the second number
-            res = res + fill_blank(tmp, '0123456789')
+            res = res + _fill_blank(tmp, '0123456789')
 
     # return res - all combinations of plates possible by changing one letter at a time
     return res
@@ -277,9 +277,9 @@ def full_plate_match(plate):
 def process_plate(res, plate_data):
     if plate_data['reg_found']:
         # the plate could have incorrect I's or O's based on position, so we can run it through the tune function
-        plate_data['reg_text'] = tune_plate(plate_data['reg_text'])
+        plate_data['reg_text'] = _perform_adjustments(plate_data['reg_text'])
 
-        if validate_plate(plate_data['reg_text']):
+        if _validate_plate(plate_data['reg_text']):
             # plate has a valid format
             ves_data = query_VES(plate_data['reg_text'])
 
@@ -298,8 +298,8 @@ def process_plate(res, plate_data):
                 # alter plate to see if we can find a match
                 print('WORK IN PROGRESS')
 
-                all_guesses = full_plate_match(plate_data['reg_text'])
-                correct_guesses = filter_all_guesses(res['predicted_color'], res['predicted_make'], all_guesses)
+                all_guesses = _generate_plate_variants(plate_data['reg_text'])
+                correct_guesses = _filter_all_guesses(res['predicted_color'], res['predicted_make'], all_guesses)
 
                 if len(correct_guesses) >= 1:
                     # one or more valid guesses were found
@@ -312,9 +312,9 @@ def process_plate(res, plate_data):
 
         else:
             # plate format is incorrect
-            # send the plate through find_missing_chars
-            all_guesses = find_missing_chars(plate_data['reg_text'])
-            correct_guesses = filter_all_guesses(res['predicted_color'], res['predicted_make'], all_guesses)
+            # send the plate through __ind_missing_chars
+            all_guesses = _find_missing_chars(plate_data['reg_text'])
+            correct_guesses = _filter_all_guesses(res['predicted_color'], res['predicted_make'], all_guesses)
 
             if len(correct_guesses) >= 1:
                 # one or more valid guesses were found
