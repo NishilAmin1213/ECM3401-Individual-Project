@@ -4,21 +4,41 @@ from ves import query_VES
 
 
 def _get_combos(text, length):
+    """
+    Function to get all possible combination of neighboring characters given a string and combination length - only for use within this module
+    e.g. for input (ABC, 2), returns AB, BC
+    :param text: String representation of capital characters
+    :param length: Integer representing the length of combinations to make
+    :return: Array holding all possible combinations of neighboring characters with the length specified
+    """
     res = []
     for i in range(len(text) - (length-1)):
         res.append(text[i:i+length])
     return res
 
 
-def _fill_blank(text, options):
+def _fill_blank(text, alphabet):
+    """
+    Function to fill in the blank in a in a string (highlighted by '?') provided with an alphabet - only for use within this module
+    :param text: String representation of capital characters containing a '?'
+    :param alphabet: String containing all permitted characters to replace the '?' with
+    :return: Array holding all possible results of the string with the replaced '?' given the alphabet passed in
+    """
     res = []
-    for char in options:
+    for char in alphabet:
         # add the string with the replaced '?' to the res array
         res.append(text.replace('?', char))
     return res
 
 
 def _convert(char):
+    """
+    Function to take a letter and return its corresponding number or vice versa, this is used to correct reading
+    errors and common character/integer mistakes that can occur when using OCR - only for use within this module
+    :param char: string representation of a character
+    :return: the corresponding integer or letter for the passed in letter or integer where possible, returns the original
+    letter where no map exists
+    """
     # define a dictionary of mappings between letters and numbers
     map_dict = {'O': '0',
                 '0': 'O',
@@ -37,6 +57,11 @@ def _convert(char):
 
 
 def _check_or_correct_area_code(area_code):
+    """
+    Function which takes in a number plate area code and returns possible correct area codes - only for use within this module
+    :param area_code: string representation of the area code
+    :return: return a set of possible area codes
+    """
     # store results in a set to avoid duplicates
     res = set()
 
@@ -55,6 +80,11 @@ def _check_or_correct_area_code(area_code):
 
 
 def _check_or_correct_year(year):
+    """
+    Function which takes in a number plate year and returns possible correct years - only for use within this module
+    :param year: string representation of the year
+    :return: return a set of possible years
+    """
     # stores results in a set to avoid duplicates
     res = set()
 
@@ -79,6 +109,12 @@ def _check_or_correct_year(year):
 
 
 def _check_or_correct_final_three(final_three):
+    """
+    Function which takes in the final three characters of a plate and returns possible correct characters - only for use
+    within this module
+    :param final_three: string representation of the final three letters of the plate
+    :return: return a set of possible characters
+    """
     # stores results in a set to avoid duplicates
     res = set()
 
@@ -98,6 +134,13 @@ def _check_or_correct_final_three(final_three):
 
 
 def _filter_all_guesses(color, make, all_guesses):
+    """
+    Function to filter through all the guesses using DVLA VES and the vehicles characteristics - only for use within this module
+    :param color: string representation of the predicted color of the vehicle as identified by the CNN
+    :param make: string representation of the predicted make of the vehicle as identified by the CNN
+    :param all_guesses: array containing all guesses for number plates
+    :return: array of correct guesses - number plate which match the predicted color and make according to DVLA VES
+    """
     # score matching guesses in the array
     correct_guesses = []
     # check each plate in the array provided
@@ -118,6 +161,11 @@ def _filter_all_guesses(color, make, all_guesses):
 
 
 def _validate_plate(plate):
+    """
+    Function to check if a registration plate is valid or not - only for use within this module
+    :param plate: string representation of the number plate to validate
+    :return: boolean, True for a valid number plate, False for an invalid number plate
+    """
     # the number plate length must be 7
     if len(plate) != 7:
         # the number plate is too long or too short, return False
@@ -155,6 +203,11 @@ def _validate_plate(plate):
 
 
 def _perform_adjustments(plate):
+    """
+    Function to take a full length number plate and adjust any characters that could have been read in wrong - only for use within this module
+    :param plate: string representation of a full length number plate
+    :return: string representing the adjusted/corrected number plate based on the dictionary map above
+    """
     # the number plate length must be 7
     if len(plate) == 7:
 
@@ -186,7 +239,7 @@ def _perform_adjustments(plate):
         # if we reach here, the res is a valid number plate, return res
         return res
 
-    # if we reach here, the plate is not 7 characters long, therefore cannot be tuned
+    # if we reach here, the plate is not 7 characters long
     # return the original plate
     return plate
 
@@ -195,6 +248,11 @@ def _perform_adjustments(plate):
 
 
 def _find_missing_chars(invalid_plate):
+    """
+    Function to take an invalid plate and find the missing characters - only for use within this module
+    :param invalid_plate: string representation of an invalid number plate
+    :return: Array of strings of all possible guesses for the number plate
+    """
     print('finding missing characters')
     res = []
     # We know that I cannot be found in a number plate, therefore if an I is found, replace it with a 1
@@ -250,6 +308,11 @@ def _find_missing_chars(invalid_plate):
 
 # this function is when a plate is valid, but does not match the vehicle characteristics
 def _generate_plate_variants(plate):
+    """
+    Function to take a full length plate and generate possible guesses for variations of the plate - only for use within this module
+    :param plate: string representation of the full length registration plate
+    :return: array of all possible guesses based on variations of the passed in number plate
+    """
     res = []
     # for each character in the array
     for index in range(len(plate)):
@@ -274,7 +337,15 @@ def _generate_plate_variants(plate):
     return res
 
 
-def process_plate(res, plate_data):
+def process_plate(predictions, plate_data):
+    """
+    Function to process the read in number plate and return correct guesses or known values for the number plate
+    :param predictions: dictionary containing the predicted color and predicted make for the vehicle image
+    :param plate_data: string representation of the number plate read in by FastANPR
+    :return: plate_data - information about the guessed or known plate,
+    ves_data - information about the plate from DVLA VES,
+    plate_status - status about the guessing of the plate or if it was read in correctly
+    """
     if plate_data['reg_found']:
         # the plate could have incorrect I's or O's based on position, so we can run it through the tune function
         plate_data['reg_text'] = _perform_adjustments(plate_data['reg_text'])
@@ -288,7 +359,7 @@ def process_plate(res, plate_data):
                 # this prevents an error in the next if statement
                 ves_data.update({'ves_make': '', 'ves_color': ''})
 
-            if ves_data['ves_make'] == res['predicted_make'] and ves_data['ves_color'] == res['predicted_color']:
+            if ves_data['ves_make'] == predictions['predicted_make'] and ves_data['ves_color'] == predictions['predicted_color']:
                 # plate matches vehicle details on VES
                 # display the data
 
@@ -299,7 +370,7 @@ def process_plate(res, plate_data):
                 print('WORK IN PROGRESS')
 
                 all_guesses = _generate_plate_variants(plate_data['reg_text'])
-                correct_guesses = _filter_all_guesses(res['predicted_color'], res['predicted_make'], all_guesses)
+                correct_guesses = _filter_all_guesses(predictions['predicted_color'], predictions['predicted_make'], all_guesses)
 
                 if len(correct_guesses) >= 1:
                     # one or more valid guesses were found
@@ -314,7 +385,7 @@ def process_plate(res, plate_data):
             # plate format is incorrect
             # send the plate through __ind_missing_chars
             all_guesses = _find_missing_chars(plate_data['reg_text'])
-            correct_guesses = _filter_all_guesses(res['predicted_color'], res['predicted_make'], all_guesses)
+            correct_guesses = _filter_all_guesses(predictions['predicted_color'], predictions['predicted_make'], all_guesses)
 
             if len(correct_guesses) >= 1:
                 # one or more valid guesses were found
