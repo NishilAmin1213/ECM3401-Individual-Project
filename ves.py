@@ -3,7 +3,12 @@ import requests
 # might be good to store the API key in a more secure way
 
 
-def get_details_VES(reg_no):
+def _get_details_VES(reg_no):
+    """
+    Function to send the request and receive the response to the DVLA VES system - only for use within this module
+    :param reg_no: string representation of the number plate to search for
+    :return: JSON object containing information about the passed in number plate
+    """
     # define the URL to send to send the request to
     url = "https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles"
     # set up the payload json which contians the registration number to query
@@ -18,10 +23,15 @@ def get_details_VES(reg_no):
 
 
 def query_VES(reg_no):
+    """
+    Function to use _get_details_VES to query the databaset - for use by other modules
+    :param reg_no: string representation of the number plate to search for
+    :return: a dictionary containing the color, make, MOT status and tax status of the vehicle that the registration number represents
+    """
     # Try to get details from VES using the function above
     # if there are any errors, return a dictionary with 'ves_found' set to False
     try:
-        response = get_details_VES(reg_no)
+        response = _get_details_VES(reg_no)
         # return vehicle make, color, mot status and tax status
         res = {'ves_found': True, 'ves_make': response['make'].title(), 'ves_color': response['colour'].title(), 'ves_mot': response['motStatus'], 'ves_tax': response['taxStatus']}
     except Exception:

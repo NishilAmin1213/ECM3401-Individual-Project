@@ -1,13 +1,3 @@
-# pip install
-'''
-pip install fastanpr (this installs pillow, Requests)
-pip install rembg
-pip install tensorflow==2.15.0
-pip install keras==2.15.0
-pip install visualkeras
-
-'''
-
 import os
 import rembg
 import tkinter as tk
@@ -19,12 +9,13 @@ from plate_detection import get_plate
 from deserialize_h5 import deserialize_VCOR, deserialize_VMR
 from plate_processor import process_plate
 
-# make the window a bit larger, more rectangular
-# to make it more convenient to test, make an executable file
-# can upload a sample dataset and readme file for how to select images from the folder ect...
-# provide a requirements.txt file
 
 def VCOR_predict(file_path):
+    """
+    Function to predict the color of a vehicle
+    :param file_path: string representation of the absolute file path to the image
+    :return: string representation of the color of the vehicle
+    """
     # load and preprocess the input image
     image = tf.keras.utils.load_img(
         # resize the image to the global variable, and ensure that the file has all 3 color channels as RGB
@@ -50,6 +41,11 @@ def VCOR_predict(file_path):
 
 
 def VMR_predict(file_path):
+    """
+    Function to predict the make of a vehicle
+    :param file_path: string representation of the absolute file path to the image
+    :return: string representation of the make of the vehicle
+    """
     # load in and preprocess the input image
     image = tf.keras.utils.load_img(
         # resize the image to the global variable, and ensure that the file has all 3 color channels as RGB
@@ -75,9 +71,15 @@ def VMR_predict(file_path):
 
 
 def process_input(file_path):
+    """
+    Function to process the file path taken in my the tkinter GUI
+    :param file_path: string representation of the absolute file path to the image
+    :return: a dictionary containing all the information about the vehicle in the image
+    """
     tmp_location = './temp.png'
 
     # remove background from image and save it to a temporary location
+    # do this using the rembg library
     rembg.remove(Image.open(file_path)).save(tmp_location)
 
     # get the predictions of the vehicle color and make
@@ -105,11 +107,16 @@ def process_input(file_path):
     res.update(ves_data)
     res.update({'plate_status': plate_status})
 
-    print(res)
-
+    # return res - the dictionary containing all the information about the image
     return res
 
+
 def check_file_path(file_path):
+    """
+    Function to check the file path provided by the user
+    :param file_path: string representation of the absolute file path to the image
+    :return: Boolean, True for a valid file path, False for an invalid file path
+    """
     # declare an array of supported file types
     filetypes = ['jpg', 'jpeg', 'png']
     # split the filename into the file path
@@ -120,11 +127,11 @@ def check_file_path(file_path):
         # return False if the file type is not supported
         return False
 
+
 def input_window():
     """
-    input_window creates and sets up the input window using tkinter
+    Tkinter GUI Function
     """
-
     # Define a font style
     my_font = ('Comic Sans MS', 12)
     bg_color = '#79A7D3'
@@ -137,6 +144,10 @@ def input_window():
     master.geometry("675x250+200+200")
 
     def get_inputs():
+        """
+        Function to take in the inputs from the GUI, pass them to the relevant functions, and display the output
+        :return: None, however this refreshes the window with the relevant information and images displayed
+        """
         # Get the image path from the image_path_input entry field
         image_path = str(image_path_input.get())
 
@@ -187,6 +198,10 @@ def input_window():
                                       message="Incorrect file type.\nPlease select a '.jpg', '.jpeg' or '.png'.")
 
     def file_selector():
+        """
+        Function to open the file dialog provided by the OS
+        :return: None, the selected file is placed into the input field if it is valid
+        """
         # use the tkinter filedialog to open file explorer and let the user choose a file
         chosen_path = str(filedialog.askopenfilename())
         if check_file_path(chosen_path):

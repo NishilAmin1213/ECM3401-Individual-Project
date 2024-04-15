@@ -3,7 +3,16 @@ import asyncio
 from fastanpr import FastANPR
 from PIL import Image
 
-async def run_anpr(image):
+
+async def _run_anpr(image):
+    """
+    Function to use the FastANPR Library to detect and read number plate from an image - only for use within this module
+    :param image: numpy.ndarray representing the image to process
+    :return: A List containing a List of NumberPlate objects
+    """
+    print('IMAGE TYPE')
+    print(type(image))
+
     # create FastANPR object
     fast_anpr = FastANPR()
 
@@ -14,6 +23,11 @@ async def run_anpr(image):
     return plate
 
 def get_plate(file_path):
+    """
+    Function to call the _run_anpr function to run FastANPR on an image- for use by other modules - for use by other modules
+    :param file_path: string representation of the absolute file path to the image
+    :return: Dictionary containing the text and cropped image of the number plate found in the image
+    """
     # Load the image and ensure that the color is RGB
     image = cv2.imread(file_path)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -21,7 +35,7 @@ def get_plate(file_path):
     # use the run_anpr function and wait for a repsonse using async
     try:
         async_loop = asyncio.get_event_loop()
-        plate = async_loop.run_until_complete(run_anpr(image))[0][0]
+        plate = async_loop.run_until_complete(_run_anpr(image))[0][0]
         if plate.rec_text is None:
             return {'reg_found': False}
     except IndexError:
