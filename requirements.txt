@@ -1,0 +1,12 @@
+fastanpr==0.1.13
+keras==2.15.0
+opencv_contrib_python==4.6.0.66
+opencv_python==4.6.0.66
+opencv_python_headless==4.9.0.80
+Pillow==10.3.0
+rembg==2.0.56
+Requests==2.31.0
+tensorflow==2.15.0
+tensorflow_intel==2.15.0
+visualkeras==0.0.2
+protobuf==3.20.2
