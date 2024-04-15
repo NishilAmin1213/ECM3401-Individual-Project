@@ -2,44 +2,119 @@ import re
 import itertools
 from ves import query_VES
 
-def tune_plate(plate):
-    # the number plate length must be 7
-    if len(plate) == 7:
 
-        # as the number plate is the correct length
-        # convert any characters that have been read in wrong
-        res = ''
-        for character, index in zip(plate, range(len(plate))):
-            if index in [2, 3]:
-                # the character must be a number
-                if not character.isnumeric():
-                    # character is not a number, so convert it if possible
-                    character = convert(character)
-                    pass
-            else:
-                # the character must be a letter
-                if not character.isalpha():
-                    # character is not a letter, so convert it if possible
-                    character = convert(character)
-                    pass
+def get_combos(text, length):
+    res = []
+    for i in range(len(text) - (length-1)):
+        res.append(text[i:i+length])
+    return res
 
-            # add the character to the result string
-            res += character
 
-        # ensure that the pattern matches the regex, if it doesn't, return the original plate
-        pattern = re.compile(r"[A-Z][A-Z][0-9][0-9][A-Z][A-Z][A-Z]")
-        if not pattern.match(res):
-            return plate
+def fill_blank(text, options):
+    res = []
+    for char in options:
+        # add the string with the replaced '?' to the res array
+        res.append(text.replace('?', char))
+    return res
 
-        # if we reach here, the res is a valid number plate, return res
-        return res
 
-    # if we reach here, the plate is not 7 characters long, therefore cannot be tuned
-    # return the original plate
-    return plate
+def convert(char):
+    # define a dictionary of mappings between letters and numbers
+    map_dict = {'O': '0',
+                '0': 'O',
+                'I': '1',
+                '1': 'I',
+                'S': '5',
+                '5': 'S'}
+    try:
+        # try to change the incorrect character to the matching number or vice versa
+        print('Changing: \'' + char + '\' to \'' + map_dict[char] + '\'')
+        # return the new character
+        return map_dict[char]
+    except KeyError:
+        # if there is an error in doing so, the letter cannot be converted, so return the origninal character
+        return char
 
-#NOTE - potentialy tune plate can return multiple plates - becasue of the issue with O and 0
-# IF GJ07HPW has a missing J, it can be read as GO_7HPW or G_07HPW - which makes a difference on success of prediction
+
+def check_or_correct_area_code(area_code):
+    # store results in a set to avoid duplicates
+    res = set()
+
+    if len(area_code) >= 2:
+        # if the area code is too long, add options of the correct length using permutations of the characters provided
+        res.update(get_combos(area_code, 2))
+    elif len(area_code) == 1:
+        # there is one character missing which could be before or after the existing one
+        # add the possible options of the correct length including the character provided
+        # character options are A-Z minus I, Q and Z
+        res.update(fill_blank('?' + area_code, 'ABCDEFGHJKLMNPRSTUVWXY'))
+        res.update(fill_blank(area_code + '?', 'ABCDEFGHJKLMNPRSTUVWXY'))
+
+    # return the res set - this holds possible options for the area code
+    return res
+
+
+def check_or_correct_year(year):
+    # stores results in a set to avoid duplicates
+    res = set()
+
+    if len(year) >= 2:
+        # the year is too long - get all permutation of pairs from it
+        res.update(get_combos(year, 2))
+    elif len(year) == 1:
+        # there is one character missing which could be before or after the existing one
+        # add the possible options of the correct length including the character provided
+        # character options are 012567 for the first character and 0-9 for the second character
+        res.update(fill_blank('?' + year, '012567'))
+        res.update(fill_blank(year + '?', '0123456789'))
+    else:
+        # no year was found, so return all possible years - hard coded in an array as this does not change
+        res.update(['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15',
+                     '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '51', '52',
+                     '53', '54', '55', '56', '57', '58', '59', '60', '61', '62', '63', '64', '65', '66', '67', '68',
+                     '69', '70', '71', '72', '73', '74'])
+
+    # return the res set - this holds possible options for the year
+    return res
+
+
+def check_or_correct_final_three(final_three):
+    # stores results in a set to avoid duplicates
+    res = set()
+
+    if len(final_three) >= 3:
+        # if the area code is too long, add options of the correct length using permutations of the characters provided
+        res.update(get_combos(final_three, 3))
+    elif len(final_three) == 2:
+        # there is one character missing which could be before or after or in between the existing ones
+        # add the possible options of the correct length including the character provided
+        # character options are A-Z minus I and Q
+        res.update(fill_blank('?' + final_three, 'ABCDEFGHJKLMNPRSTUVWXYZ'))
+        res.update(fill_blank(final_three + '?', 'ABCDEFGHJKLMNPRSTUVWXYZ'))
+        res.update(fill_blank(final_three[0] + '?' + final_three[1], 'ABCDEFGHJKLMNPRSTUVWXYZ'))
+
+    # return the res set - this holds possible options for the final three characters
+    return res
+
+
+def filter_all_guesses(color, make, all_guesses):
+    # score matching guesses in the array
+    correct_guesses = []
+    # check each plate in the array provided
+    for plate in all_guesses:
+        # get the plate details from VES
+        test_plate_details = query_VES(plate)
+        try:
+            if test_plate_details['ves_make'] == make and test_plate_details['ves_color'] == color:
+                # if the plate make and color match the characteristics passed in, append the plate to the correct_guesses array
+                print('FOUND: ' + plate)
+                correct_guesses.append(plate)
+        except KeyError:
+            # if there is a KeyError, VES could not find the plate, so continue checking other plates
+            pass
+
+    # return all correct guesses
+    return correct_guesses
 
 
 def validate_plate(plate):
@@ -79,98 +154,44 @@ def validate_plate(plate):
     return True
 
 
-def convert(char):
-    # define a dictionary of mappings between letters and numbers
-    map_dict = {'O': '0',
-                '0': 'O',
-                'I': '1',
-                '1': 'I',
-                'S': '5',
-                '5': 'S'}
-    try:
-        # try to change the incorrect character to the matching number or vice versa
-        print('Changing: \'' + char + '\' to \'' + map_dict[char] + '\'')
-        # return the new character
-        return map_dict[char]
-    except KeyError:
-        # if there is an error in doing so, the letter cannot be converted, so return the origninal character
-        return char
+def tune_plate(plate):
+    # the number plate length must be 7
+    if len(plate) == 7:
 
+        # as the number plate is the correct length
+        # convert any characters that have been read in wrong
+        res = ''
+        for character, index in zip(plate, range(len(plate))):
+            if index in [2, 3]:
+                # the character must be a number
+                if not character.isnumeric():
+                    # character is not a number, so convert it if possible
+                    character = convert(character)
+                    pass
+            else:
+                # the character must be a letter
+                if not character.isalpha():
+                    # character is not a letter, so convert it if possible
+                    character = convert(character)
+                    pass
 
-def get_combos(text, length):
-    res = []
-    for i in range(len(text) - (length-1)):
-        res.append(text[i:i+length])
-    return res
+            # add the character to the result string
+            res += character
 
+        # ensure that the pattern matches the regex, if it doesn't, return the original plate
+        pattern = re.compile(r"[A-Z][A-Z][0-9][0-9][A-Z][A-Z][A-Z]")
+        if not pattern.match(res):
+            return plate
 
-def fill_blank(text, options):
-    res = []
-    for char in options:
-        # add the string with the replaced '?' to the res array
-        res.append(text.replace('?', char))
-    return res
+        # if we reach here, the res is a valid number plate, return res
+        return res
 
+    # if we reach here, the plate is not 7 characters long, therefore cannot be tuned
+    # return the original plate
+    return plate
 
-def check_or_correct_area_code(area_code):
-    # store results in a set to avoid duplicates
-    res = set()
-
-    if len(area_code) >= 2:
-        # if the area code is too long, add options of the correct length using permutations of the characters provided
-        res.update(get_combos(area_code, 2))
-    elif len(area_code) == 1:
-        # there is one character missing which could be before or after the existing one
-        # add the possible options of the correct length including the character provided
-        # character options are A-Z minus I, Q and Z
-        res.update(fill_blank('?' + area_code, 'ABCDEFGHJKLMNPRSTUVWXY'))
-        res.update(fill_blank(area_code + '?', 'ABCDEFGHJKLMNPRSTUVWXY'))
-
-    # return the res set - this holds possible options for the area code
-    return res
-
-
-def check_or_correct_final_three(final_three):
-    # stores results in a set to avoid duplicates
-    res = set()
-
-    if len(final_three) >= 3:
-        # if the area code is too long, add options of the correct length using permutations of the characters provided
-        res.update(get_combos(final_three, 3))
-    elif len(final_three) == 2:
-        # there is one character missing which could be before or after or in between the existing ones
-        # add the possible options of the correct length including the character provided
-        # character options are A-Z minus I and Q
-        res.update(fill_blank('?' + final_three, 'ABCDEFGHJKLMNPRSTUVWXYZ'))
-        res.update(fill_blank(final_three + '?', 'ABCDEFGHJKLMNPRSTUVWXYZ'))
-        res.update(fill_blank(final_three[0] + '?' + final_three[1], 'ABCDEFGHJKLMNPRSTUVWXYZ'))
-
-    # return the res set - this holds possible options for the final three characters
-    return res
-
-
-def check_or_correct_year(year):
-    # stores results in a set to avoid duplicates
-    res = set()
-
-    if len(year) >= 2:
-        # the year is too long - get all permutation of pairs from it
-        res.update(get_combos(year, 2))
-    elif len(year) == 1:
-        # there is one character missing which could be before or after the existing one
-        # add the possible options of the correct length including the character provided
-        # character options are 012567 for the first character and 0-9 for the second character
-        res.update(fill_blank('?' + year, '012567'))
-        res.update(fill_blank(year + '?', '0123456789'))
-    else:
-        # no year was found, so return all possible years - hard coded in an array as this does not change
-        res.update(['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15',
-                     '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '51', '52',
-                     '53', '54', '55', '56', '57', '58', '59', '60', '61', '62', '63', '64', '65', '66', '67', '68',
-                     '69', '70', '71', '72', '73', '74'])
-
-    # return the res set - this holds possible options for the year
-    return res
+#NOTE - potentialy tune plate can return multiple plates - becasue of the issue with O and 0
+# IF GJ07HPW has a missing J, it can be read as GO_7HPW or G_07HPW - which makes a difference on success of prediction
 
 
 def find_missing_chars(invalid_plate):
@@ -251,26 +272,6 @@ def full_plate_match(plate):
 
     # return res - all combinations of plates possible by changing one letter at a time
     return res
-
-
-def filter_all_guesses(color, make, all_guesses):
-    # score matching guesses in the array
-    correct_guesses = []
-    # check each plate in the array provided
-    for plate in all_guesses:
-        # get the plate details from VES
-        test_plate_details = query_VES(plate)
-        try:
-            if test_plate_details['ves_make'] == make and test_plate_details['ves_color'] == color:
-                # if the plate make and color match the characteristics passed in, append the plate to the correct_guesses array
-                print('FOUND: ' + plate)
-                correct_guesses.append(plate)
-        except KeyError:
-            # if there is a KeyError, VES could not find the plate, so continue checking other plates
-            pass
-
-    # return all correct guesses
-    return correct_guesses
 
 
 def process_plate(res, plate_data):
