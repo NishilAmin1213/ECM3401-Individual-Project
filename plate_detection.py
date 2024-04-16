@@ -4,6 +4,11 @@ from fastanpr import FastANPR
 from PIL import Image
 
 
+#    Title: fastanpr
+#    Author: Arvind Rajan
+#    Date: 16/04/2024
+#    Code version: 0.1.13 *At time of writing this
+#    Availability: https://pypi.org/project/fastanpr/
 async def _run_anpr(image):
     """
     Function to use the FastANPR Library to detect and read number plate from an image - only for use within this module

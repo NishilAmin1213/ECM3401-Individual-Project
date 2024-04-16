@@ -1,7 +1,7 @@
 #### Quick Start
 This section contains commands to start the project, more description and information can be read below starting from the Introduction section
 1) Open the terminal and navigate to the '' directory containing the python files, readme and requirements.txt
-2) Ensure Python 3.9 is installed - 'python --version' (other versions of python may not guarantee full functioning of the code)
+2) Ensure Python 3.9 is installed - 'python --version' (other versions of python may not guarantee functioning of the code)
 3) Create a venv - 'python -m venv anpr-project-venv'
 4) Activate the venv - Windows: 'anpr-project-venv\Scripts\activate'        Unix or MacOS: 'source anpr-project-venv/bin/activate'
 5) Verify that pip is installed - 'python -m ensurepip --upgrade'
