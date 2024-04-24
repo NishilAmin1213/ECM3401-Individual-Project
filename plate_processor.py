@@ -390,6 +390,7 @@ def process_plate(predictions, plate_data):
             if len(correct_guesses) >= 1:
                 # one or more valid guesses were found
                 plate_status = str(len(correct_guesses)) + ' plate(s) predicted ' + str(correct_guesses)
+                print(correct_guesses)
                 ves_data = query_VES(correct_guesses[0])
 
             else:
@@ -402,3 +403,12 @@ def process_plate(predictions, plate_data):
         plate_status = 'No Plate Found'
 
     return plate_data, ves_data, plate_status
+
+
+    # change the return array, if ves_found is true, then had a element
+    # ves_data - this is an array and it contians a sub-array
+    # then inside each array we store reg, make, color, mor and tax
+    # then if there are multiple plates, we can output data for both
+
+    # might be easier to just return ves_text - and then this is one variable to be used by tkinter
+

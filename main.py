@@ -6,7 +6,7 @@ from PIL import ImageTk, Image
 from tkinter import filedialog, messagebox
 
 from plate_detection import get_plate
-from deserialize_h5 import deserialize_VCOR, deserialize_VMR
+from deserialize_h5 import deserialize_model
 from plate_processor import process_plate
 
 
@@ -155,34 +155,35 @@ def input_window():
         if check_file_path(image_path):
 
             # Process the Image using the process_input function
-            prediction = process_input(image_path)
+            processed_data = process_input(image_path)
+            print(processed_data)
 
             # Resize the window as it will now display more information
             master.geometry("675x550+200+200")
 
-            if prediction['reg_found']:
+            if processed_data['reg_found']:
                 # if a registration is found, place the color, make and observed registration number into the window
-                observation_label.config(text='Color: ' + prediction['predicted_color'] + ', Make: ' + prediction['predicted_make'] + ', Reg No: ' + prediction['reg_text'])
+                observation_label.config(text='Color: ' + processed_data['predicted_color'] + ', Make: ' + processed_data['predicted_make'] + ', Reg No: ' + processed_data['reg_text'])
 
                 # Place the cropped number plate into the window
-                img = prediction['reg_image']
+                img = processed_data['reg_image']
                 img.thumbnail((100, 550))
                 img = ImageTk.PhotoImage(img)
                 reg_image.config(image=img)
             else:
                 # no registration number was found, plate the color and make into the window
-                observation_label.config(text='Color: ' + prediction['predicted_color'] + ', Make: ' + prediction['predicted_make'] + ', Reg No: Not Found')
+                observation_label.config(text='Color: ' + processed_data['predicted_color'] + ', Make: ' + processed_data['predicted_make'] + ', Reg No: Not Found')
                 reg_image.config(image="")
 
-            if prediction['ves_found']:
+            if processed_data['ves_found']:
                 # if data from VES is found, place the color, make, MOT and tax status from VES into the window
-                ves_label.config(text='Color: ' + prediction['ves_color'] + ', Make: ' + prediction['ves_make'] + ', MOT: ' + prediction['ves_mot'] + ', Tax: ' + prediction['ves_tax'])
+                ves_label.config(text=processed_data['reg_no'] + ': Color: ' + processed_data['ves_color'] + ', Make: ' + processed_data['ves_make'] + ', MOT: ' + processed_data['ves_mot'] + ', Tax: ' + processed_data['ves_tax'])
             else:
                 # no data was found on VES, place a mesage in the window to highlight this
                 ves_label.config(text='Not Found')
 
             # plate a message regarding the status of the plate
-            plate_label.config(text=prediction['plate_status'])
+            plate_label.config(text=processed_data['plate_status'])
 
             # Place full image provided by the used into the window
             tmp_img = Image.open(image_path)
@@ -275,9 +276,9 @@ if __name__ == '__main__':
     vcor_IMAGE_SIZE = vmr_IMAGE_SIZE = 224
 
     global vcor_model, vcor_class_names
-    vcor_model, vcor_class_names = deserialize_VCOR()
+    vcor_model, vcor_class_names = deserialize_model('VCOR.h5', 'class_names_VCOR.txt')
 
     global vmr_model, vmr_class_names
-    vmr_model, vmr_class_names = deserialize_VMR()
+    vmr_model, vmr_class_names = deserialize_model('VMR.h5', 'class_names_VMR.txt', use_layerscale=True)
 
     input_window()

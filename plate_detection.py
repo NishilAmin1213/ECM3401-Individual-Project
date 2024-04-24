@@ -1,7 +1,7 @@
-import cv2
 import asyncio
 from fastanpr import FastANPR
 from PIL import Image
+import numpy as np
 
 
 #    Title: fastanpr
@@ -33,9 +33,10 @@ def get_plate(file_path):
     :param file_path: string representation of the absolute file path to the image
     :return: Dictionary containing the text and cropped image of the number plate found in the image
     """
-    # Load the image and ensure that the color is RGB
-    image = cv2.imread(file_path)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    # Load the image and ensure that the color mode is RGB
+    image = Image.open(file_path).convert('RGB')
+    # convert the image to a numpy array
+    image = np.array(image)
 
     # use the run_anpr function and wait for a repsonse using async
     try:
