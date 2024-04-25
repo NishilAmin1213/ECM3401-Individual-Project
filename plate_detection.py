@@ -15,8 +15,6 @@ async def _run_anpr(image):
     :param image: numpy.ndarray representing the image to process
     :return: A List containing a List of NumberPlate objects
     """
-    print('IMAGE TYPE')
-    print(type(image))
 
     # create FastANPR object
     fast_anpr = FastANPR()

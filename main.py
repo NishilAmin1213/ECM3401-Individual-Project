@@ -5,8 +5,8 @@ import tensorflow as tf
 from PIL import ImageTk, Image
 from tkinter import filedialog, messagebox
 
-from plate_detection import get_plate
 from deserialize_h5 import deserialize_model
+from plate_detection import get_plate
 from plate_processor import process_plate
 
 
@@ -88,7 +88,6 @@ def process_input(file_path):
 
     # get the text and location of the number plate
     plate_data = get_plate(tmp_location)
-    print(plate_data)
 
     # delete the temporary image as it is no longer needed
     os.remove(tmp_location)
@@ -99,12 +98,11 @@ def process_input(file_path):
     # this block uses the res array and ves.py
     # as long as we do not directly write to variables in main.py, this block of code can be put into
     # a function in plate_processor.py
-
     plate_data, ves_data, plate_status = process_plate(res, plate_data)
 
     # Uppdate the res array with the read in plate, ves details of the predicted plate and status of the msg
     res.update(plate_data)
-    res.update(ves_data)
+    res.update({'ves_text': ves_data})
     res.update({'plate_status': plate_status})
 
     # return res - the dictionary containing all the information about the image
@@ -141,7 +139,7 @@ def input_window():
     master = tk.Tk()
     master.title("Nishil's Machine Learning ANPR Camera")
     master.configure(bg=bg_color)
-    master.geometry("675x250+200+200")
+    master.geometry("680x250+200+200")
 
     def get_inputs():
         """
@@ -159,7 +157,7 @@ def input_window():
             print(processed_data)
 
             # Resize the window as it will now display more information
-            master.geometry("675x550+200+200")
+            master.geometry("680x550+200+200")
 
             if processed_data['reg_found']:
                 # if a registration is found, place the color, make and observed registration number into the window
@@ -175,12 +173,15 @@ def input_window():
                 observation_label.config(text='Color: ' + processed_data['predicted_color'] + ', Make: ' + processed_data['predicted_make'] + ', Reg No: Not Found')
                 reg_image.config(image="")
 
+            ves_label.config(text=processed_data['ves_text'])
+            '''
             if processed_data['ves_found']:
                 # if data from VES is found, place the color, make, MOT and tax status from VES into the window
                 ves_label.config(text=processed_data['reg_no'] + ': Color: ' + processed_data['ves_color'] + ', Make: ' + processed_data['ves_make'] + ', MOT: ' + processed_data['ves_mot'] + ', Tax: ' + processed_data['ves_tax'])
             else:
                 # no data was found on VES, place a mesage in the window to highlight this
                 ves_label.config(text='Not Found')
+            '''
 
             # plate a message regarding the status of the plate
             plate_label.config(text=processed_data['plate_status'])
@@ -246,17 +247,19 @@ def input_window():
     plate_label.grid(row=5, column=1, columnspan=3)
 
     # VES Label
-    tk.Label(master, text="VES Data", font=my_font, bg=bg_color).grid(row=6, column=0)
+    tk.Label(master, text="VES Data", font=my_font, bg=bg_color, anchor='n').grid(row=6, column=0)
     ves_label = tk.Label(master, text='', font=my_font, bg=bg_color)
     ves_label.grid(row=6, column=1, columnspan=3)
 
     # Cropped Number Plate Output Block
+    tk.Label(master, text="Cropped Plate", font=my_font, bg=bg_color, anchor='n').grid(row=7, column=0)
     reg_image = tk.Label(master, bg=bg_color)
-    reg_image.grid(row=7, column=0, columnspan=3)
+    reg_image.grid(row=7, column=1, columnspan=3)
 
     # Full Image Output Block
+    tk.Label(master, text="Input Image", font=my_font, bg=bg_color, anchor='n').grid(row=8, column=0)
     full_image = tk.Label(master, bg=bg_color)
-    full_image.grid(row=8, column=0, columnspan=3)
+    full_image.grid(row=8, column=1, columnspan=3)
 
     # Repurposing the Escape and Enter key
     def close_win():

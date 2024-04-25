@@ -243,10 +243,6 @@ def _perform_adjustments(plate):
     # return the original plate
     return plate
 
-#NOTE - potentialy tune plate can return multiple plates - becasue of the issue with O and 0
-# IF GJ07HPW has a missing J, it can be read as GO_7HPW or G_07HPW - which makes a difference on success of prediction
-
-
 def _find_missing_chars(invalid_plate):
     """
     Function to take an invalid plate and find the missing characters - only for use within this module
@@ -256,8 +252,10 @@ def _find_missing_chars(invalid_plate):
     print('finding missing characters')
     res = []
     # We know that I cannot be found in a number plate, therefore if an I is found, replace it with a 1
-    # NOTE - second plate with O and 0 swapped can be placed in array here and the next block iterated over
     invalid_plate = invalid_plate.replace('I', '1')
+
+    # NOTE - second plate with O and 0 swapped can be placed in array here and the next block iterated over
+
 
     try:
         # try to find two numbers in the string
@@ -278,32 +276,30 @@ def _find_missing_chars(invalid_plate):
     centre = invalid_plate[int_index[0]:int_index[1]]
     right = invalid_plate[int_index[1]:]
 
-    print(left)
-    print(centre)
-    print(right)
-
     # check or correct each component of the number plate
     left = _check_or_correct_area_code(left)
     centre = _check_or_correct_year(centre)
     right = _check_or_correct_final_three(right)
 
     # get the number of permutations of results
-    cartesian_product = itertools.product(left, centre, right)
-    num_permutations = len(list(cartesian_product))
-    print(str(num_permutations) + ' permutations')
+    num_permutations = (int(len(left) if str(left) != 'set()' else 418) *
+                        int(len(centre) if str(centre) != 'set()' else 54) *
+                        int(len(right) if str(right) != 'set()' else 17576))
+    print(str(num_permutations) + ' Permutations')
+
     # if there are too many computations this will not be time efficient
     # or efficient for the usage of the VES Database
-    if num_permutations == 0 or num_permutations > 115:
+    if num_permutations > 115:
         # it is not possible to produce a result
         print('Too Many Permutations')
-        return []
+        return num_permutations, []
 
     # add every combination of the three components to the res array
     for combo in itertools.product(left, centre, right):
         res.append(combo[0] + combo[1] + combo[2])
 
     # return all possible options for the number plate
-    return res
+    return num_permutations, res
 
 
 # this function is when a plate is valid, but does not match the vehicle characteristics
@@ -353,6 +349,8 @@ def process_plate(predictions, plate_data):
         if _validate_plate(plate_data['reg_text']):
             # plate has a valid format
             ves_data = query_VES(plate_data['reg_text'])
+            ves_text = ves_data['reg_no'] + ' - Color: ' + ves_data['ves_color'] + ', Make: ' + ves_data[
+                'ves_make'] + ', MOT: ' + ves_data['ves_mot'] + ', Tax: ' + ves_data['ves_tax']
 
             if not ves_data['ves_found']:
                 # no data existed on ves, therefore make make and color blank
@@ -362,7 +360,6 @@ def process_plate(predictions, plate_data):
             if ves_data['ves_make'] == predictions['predicted_make'] and ves_data['ves_color'] == predictions['predicted_color']:
                 # plate matches vehicle details on VES
                 # display the data
-
                 plate_status = 'Read Correctly - No Changes Made'
             else:
                 # plate is valid, but does not match vehicle details
@@ -370,45 +367,54 @@ def process_plate(predictions, plate_data):
                 print('WORK IN PROGRESS')
 
                 all_guesses = _generate_plate_variants(plate_data['reg_text'])
+                num_permutations = len(all_guesses)
                 correct_guesses = _filter_all_guesses(predictions['predicted_color'], predictions['predicted_make'], all_guesses)
 
                 if len(correct_guesses) >= 1:
                     # one or more valid guesses were found
-                    plate_status = str(len(correct_guesses)) + ' plate(s) predicted ' + str(correct_guesses)
-                    ves_data = query_VES(correct_guesses[0])
+                    plate_status = str(len(correct_guesses)) + ' plate(s) match from ' + str(num_permutations) + ' options - ' + str(correct_guesses)
+                    ves_text = ''
+                    for plate in correct_guesses:
+                        if ves_text != '':
+                            ves_text += '\n'
+                        ves_data = query_VES(plate)
+                        ves_text = ves_text + ves_data['reg_no'] + ' - Color: ' + ves_data['ves_color'] + ', Make: ' + \
+                                   ves_data['ves_make'] + ', MOT: ' + ves_data['ves_mot'] + ', Tax: ' + ves_data['ves_tax']
 
                 else:
                     plate_status = 'Plate Read - Does Not Match Vehicle'
                     ves_data = {'ves_found': False}
+                    ves_text = "Not Found"
 
         else:
             # plate format is incorrect
             # send the plate through __ind_missing_chars
-            all_guesses = _find_missing_chars(plate_data['reg_text'])
+            num_permutations, all_guesses = _find_missing_chars(plate_data['reg_text'])
+            print(all_guesses)
             correct_guesses = _filter_all_guesses(predictions['predicted_color'], predictions['predicted_make'], all_guesses)
 
             if len(correct_guesses) >= 1:
                 # one or more valid guesses were found
-                plate_status = str(len(correct_guesses)) + ' plate(s) predicted ' + str(correct_guesses)
+                plate_status = str(len(correct_guesses)) + ' plate(s) match from ' + str(num_permutations) + ' options - ' + str(correct_guesses)
                 print(correct_guesses)
-                ves_data = query_VES(correct_guesses[0])
+                ves_text = ''
+                for plate in correct_guesses:
+                    if ves_text != '':
+                        ves_text += '\n'
+                    ves_data = query_VES(plate)
+                    ves_text = ves_text + ves_data['reg_no'] + ' - Color: ' + ves_data['ves_color'] + ', Make: ' + ves_data[
+                        'ves_make'] + ', MOT: ' + ves_data['ves_mot'] + ', Tax: ' + ves_data['ves_tax']
 
             else:
                 # no valid plates were found
-                plate_status = 'No Valid Guesses Found'
-                ves_data = {'ves_found': False}
+                plate_status = 'No Valid Guesses Found out of ' + str(num_permutations) + ' permutations'
+                ves_text = "Not Found"
     else:
         # plate was not read in successfully - it may not exist or may not be very visible
-        ves_data = {'ves_found': False}
+        ves_text = "Not Found"
         plate_status = 'No Plate Found'
 
-    return plate_data, ves_data, plate_status
-
-
-    # change the return array, if ves_found is true, then had a element
-    # ves_data - this is an array and it contians a sub-array
-    # then inside each array we store reg, make, color, mor and tax
-    # then if there are multiple plates, we can output data for both
-
-    # might be easier to just return ves_text - and then this is one variable to be used by tkinter
-
+    # if there are no MOT details, replace the long text with a shorter string
+    # This is done here instead of in ves.py as it is only neccessary to change the string for outputs
+    ves_text = ves_text.replace('No details held by DVLA', 'No Data')
+    return plate_data, ves_text, plate_status
