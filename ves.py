@@ -1,6 +1,5 @@
 import json
 import requests
-# might be good to store the API key in a more secure way
 
 
 def _get_details_VES(reg_no):
@@ -33,7 +32,7 @@ def query_VES(reg_no):
     try:
         response = _get_details_VES(reg_no)
         # return vehicle make, color, mot status and tax status
-        res = {'ves_found': True, 'reg_no':response['registrationNumber'], 'ves_make': response['make'].title(), 'ves_color': response['colour'].title(), 'ves_mot': response['motStatus'], 'ves_tax': response['taxStatus']}
+        res = {'ves_found': True, 'reg_no': response['registrationNumber'], 'ves_make': response['make'].title(), 'ves_color': response['colour'].title(), 'ves_mot': response['motStatus'], 'ves_tax': response['taxStatus']}
     except Exception:
         res = {'ves_found': False}
 

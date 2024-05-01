@@ -48,7 +48,6 @@ def _convert(char):
                 '5': 'S'}
     try:
         # try to change the incorrect character to the matching number or vice versa
-        print('Changing: \'' + char + '\' to \'' + map_dict[char] + '\'')
         # return the new character
         return map_dict[char]
     except KeyError:
@@ -125,9 +124,9 @@ def _check_or_correct_final_three(final_three):
         # there is one character missing which could be before or after or in between the existing ones
         # add the possible options of the correct length including the character provided
         # character options are A-Z minus I and Q
-        res.update(_fill_blank('?' + final_three, 'ABCDEFGHJKLMNPRSTUVWXYZ'))
-        res.update(_fill_blank(final_three + '?', 'ABCDEFGHJKLMNPRSTUVWXYZ'))
-        res.update(_fill_blank(final_three[0] + '?' + final_three[1], 'ABCDEFGHJKLMNPRSTUVWXYZ'))
+        res.update(_fill_blank('?' + final_three, 'ABCDEFGHJKLMNOPRSTUVWXYZ'))
+        res.update(_fill_blank(final_three + '?', 'ABCDEFGHJKLMNOPRSTUVWXYZ'))
+        res.update(_fill_blank(final_three[0] + '?' + final_three[1], 'ABCDEFGHJKLMNOPRSTUVWXYZ'))
 
     # return the res set - this holds possible options for the final three characters
     return res
@@ -249,57 +248,62 @@ def _find_missing_chars(invalid_plate):
     :param invalid_plate: string representation of an invalid number plate
     :return: Array of strings of all possible guesses for the number plate
     """
-    print('finding missing characters')
-    res = []
+    res = set()
     # We know that I cannot be found in a number plate, therefore if an I is found, replace it with a 1
     invalid_plate = invalid_plate.replace('I', '1')
 
-    # NOTE - second plate with O and 0 swapped can be placed in array here and the next block iterated over
+    # O and 0 are often mixed up by the OCR tools. Therefore, we change 0's to O's, O's to 0's and swap O's with 0's
+    # this means that any read in errors regarding 0's and O's can be elimintated.
+    plates = {invalid_plate, invalid_plate.replace('0', 'O'), invalid_plate.replace('O', '0')}
+    plates.add(invalid_plate.replace('0', 'I').replace('O', '0').replace('I', 'O'))
 
-
-    try:
-        # try to find two numbers in the string
-        pattern = re.compile(r"\d\d")
-        int_index = pattern.search(invalid_plate).span()
-    except AttributeError:
-        # two numbers were not found, therefore try to look for one number
+    total_permutations = 0
+    allowed_permutations = 0
+    for invalid_plate in plates:
         try:
-            pattern = re.compile(r"\d")
+            # try to find two numbers in the string
+            pattern = re.compile(r"\d\d")
             int_index = pattern.search(invalid_plate).span()
         except AttributeError:
-            # one number was not found, therefore there are no numbers in the number plate
-            # place the split at index 2
-            int_index = (2, 2)
+            # two numbers were not found, therefore try to look for one number
+            try:
+                pattern = re.compile(r"\d")
+                int_index = pattern.search(invalid_plate).span()
+            except AttributeError:
+                # one number was not found, therefore there are no numbers in the number plate
+                # place the split at index 2
+                int_index = (2, 2)
 
-    # split the number plate into 3 components
-    left = invalid_plate[:int_index[0]]
-    centre = invalid_plate[int_index[0]:int_index[1]]
-    right = invalid_plate[int_index[1]:]
+        # split the number plate into 3 components
+        left = invalid_plate[:int_index[0]]
+        centre = invalid_plate[int_index[0]:int_index[1]]
+        right = invalid_plate[int_index[1]:]
 
-    # check or correct each component of the number plate
-    left = _check_or_correct_area_code(left)
-    centre = _check_or_correct_year(centre)
-    right = _check_or_correct_final_three(right)
+        # check or correct each component of the number plate
+        left = _check_or_correct_area_code(left)
+        centre = _check_or_correct_year(centre)
+        right = _check_or_correct_final_three(right)
 
-    # get the number of permutations of results
-    num_permutations = (int(len(left) if str(left) != 'set()' else 418) *
-                        int(len(centre) if str(centre) != 'set()' else 54) *
-                        int(len(right) if str(right) != 'set()' else 17576))
-    print(str(num_permutations) + ' Permutations')
+        # get the number of permutations of results
+        num_permutations = (int(len(left) if str(left) != 'set()' else 418) *
+                            int(len(centre) if str(centre) != 'set()' else 54) *
+                            int(len(right) if str(right) != 'set()' else 17576))
 
-    # if there are too many computations this will not be time efficient
-    # or efficient for the usage of the VES Database
-    if num_permutations > 115:
-        # it is not possible to produce a result
-        print('Too Many Permutations')
-        return num_permutations, []
+        # if there are too many computations this will not be time efficient
+        # or efficient for the usage of the VES Database
+        if num_permutations > 115:
+            total_permutations += num_permutations
+            # it is not possible to produce a result
+            continue
 
-    # add every combination of the three components to the res array
-    for combo in itertools.product(left, centre, right):
-        res.append(combo[0] + combo[1] + combo[2])
+        allowed_permutations += num_permutations
+        total_permutations += num_permutations
+        # add every combination of the three components to the res array
+        for combo in itertools.product(left, centre, right):
+            res.add(combo[0] + combo[1] + combo[2])
 
     # return all possible options for the number plate
-    return num_permutations, res
+    return allowed_permutations if allowed_permutations > 0 else total_permutations, res
 
 
 # this function is when a plate is valid, but does not match the vehicle characteristics
@@ -309,7 +313,7 @@ def _generate_plate_variants(plate):
     :param plate: string representation of the full length registration plate
     :return: array of all possible guesses based on variations of the passed in number plate
     """
-    res = []
+    res = set()
     # for each character in the array
     for index in range(len(plate)):
         # replate the character with a ?
@@ -318,19 +322,19 @@ def _generate_plate_variants(plate):
         # based on the index of the '?' get all possible values it can be and plate it into the plate
         if index in '01':
             # the area code
-            res = res + _fill_blank(tmp, 'ABCDEFGHJKLMNPRSTUVWXY')
+            res.update(_fill_blank(tmp, 'ABCDEFGHJKLMNPRSTUVWXY'))
         elif index in '456':
             # the last 3 letters
-            res = res + _fill_blank(tmp, 'ABCDEFGHJKLMNPRSTUVWXYZ')
+            res.update(_fill_blank(tmp, 'ABCDEFGHJKLMNOPRSTUVWXYZ'))
         elif index in '2':
             # the first number
-            res = res + _fill_blank(tmp, '012567')
+            res.update(_fill_blank(tmp, '012567'))
         else:
             # the second number
-            res = res + _fill_blank(tmp, '0123456789')
+            res.update(_fill_blank(tmp, '0123456789'))
 
     # return res - all combinations of plates possible by changing one letter at a time
-    return res
+    return list(res)
 
 
 def process_plate(predictions, plate_data):
@@ -342,6 +346,7 @@ def process_plate(predictions, plate_data):
     ves_data - information about the plate from DVLA VES,
     plate_status - status about the guessing of the plate or if it was read in correctly
     """
+
     if plate_data['reg_found']:
         # the plate could have incorrect I's or O's based on position, so we can run it through the tune function
         plate_data['reg_text'] = _perform_adjustments(plate_data['reg_text'])
@@ -349,8 +354,6 @@ def process_plate(predictions, plate_data):
         if _validate_plate(plate_data['reg_text']):
             # plate has a valid format
             ves_data = query_VES(plate_data['reg_text'])
-            ves_text = ves_data['reg_no'] + ' - Color: ' + ves_data['ves_color'] + ', Make: ' + ves_data[
-                'ves_make'] + ', MOT: ' + ves_data['ves_mot'] + ', Tax: ' + ves_data['ves_tax']
 
             if not ves_data['ves_found']:
                 # no data existed on ves, therefore make make and color blank
@@ -361,10 +364,11 @@ def process_plate(predictions, plate_data):
                 # plate matches vehicle details on VES
                 # display the data
                 plate_status = 'Read Correctly - No Changes Made'
+                ves_text = ves_data['reg_no'] + ' - Color: ' + ves_data['ves_color'] + ', Make: ' + \
+                           ves_data['ves_make'] + ', MOT: ' + ves_data['ves_mot'] + ', Tax: ' + ves_data['ves_tax']
             else:
                 # plate is valid, but does not match vehicle details
                 # alter plate to see if we can find a match
-                print('WORK IN PROGRESS')
 
                 all_guesses = _generate_plate_variants(plate_data['reg_text'])
                 num_permutations = len(all_guesses)
@@ -396,7 +400,6 @@ def process_plate(predictions, plate_data):
             if len(correct_guesses) >= 1:
                 # one or more valid guesses were found
                 plate_status = str(len(correct_guesses)) + ' plate(s) match from ' + str(num_permutations) + ' options - ' + str(correct_guesses)
-                print(correct_guesses)
                 ves_text = ''
                 for plate in correct_guesses:
                     if ves_text != '':
@@ -415,6 +418,6 @@ def process_plate(predictions, plate_data):
         plate_status = 'No Plate Found'
 
     # if there are no MOT details, replace the long text with a shorter string
-    # This is done here instead of in ves.py as it is only neccessary to change the string for outputs
+    # This is done here instead of in ves.py as it is not neccessary to change the string for all queries (as many get discarded)
     ves_text = ves_text.replace('No details held by DVLA', 'No Data')
     return plate_data, ves_text, plate_status

@@ -5,7 +5,7 @@ import tensorflow as tf
 from PIL import ImageTk, Image
 from tkinter import filedialog, messagebox
 
-from deserialize_h5 import deserialize_model
+from deserialize import deserialize_model
 from plate_detection import get_plate
 from plate_processor import process_plate
 
@@ -115,15 +115,21 @@ def check_file_path(file_path):
     :param file_path: string representation of the absolute file path to the image
     :return: Boolean, True for a valid file path, False for an invalid file path
     """
+    # check if file exists
+    if not os.path.isfile(file_path):
+        return False
+
     # declare an array of supported file types
     filetypes = ['jpg', 'jpeg', 'png']
     # split the filename into the file path
-    if file_path.split('.')[-1] in filetypes:
-        # return True if the file type is supported
-        return True
-    else:
-        # return False if the file type is not supported
+    if file_path.split('.')[-1] not in filetypes:
+        # return True if the file type is not found or supported
         return False
+
+    # file is valid if we reach here
+    return True
+
+
 
 
 def input_window():
@@ -154,10 +160,10 @@ def input_window():
 
             # Process the Image using the process_input function
             processed_data = process_input(image_path)
-            print(processed_data)
 
             # Resize the window as it will now display more information
-            master.geometry("680x550+200+200")
+
+            master.geometry("685x550+" + str(master.winfo_x()) + "+" + str(master.winfo_y()))
 
             if processed_data['reg_found']:
                 # if a registration is found, place the color, make and observed registration number into the window
