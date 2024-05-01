@@ -1,4 +1,3 @@
-# required pip install of selenium, beautifulsoup4, lxml, tqdm, numpy, google-cloud-storage
 import bs4
 import time
 import shutil
@@ -7,16 +6,21 @@ import numpy as np
 import urllib.request
 from tqdm import tqdm
 from selenium import webdriver
-from google.cloud import storage
 from selenium.webdriver.chrome.options import Options
 
 
 class ImageNotFoundError(Exception):
+    '''
+    Custom error to be raised when an image cannot be found
+    '''
     pass
 
 
 def create_driver_od():
-    # set up and create a chrome driver to be used
+    '''
+    Function to create and set up a chrome driver object
+    :return: Returns a chrome driver object
+    '''
     options = Options()
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
@@ -27,6 +31,12 @@ def create_driver_od():
 
 
 def get_page(url, delay=5):
+    '''
+    Function to get the content of a page and return it as a bs4 object
+    :param url: url of the page to get
+    :param delay: delay in seconds to wait for the page to load
+    :return: bs4 object of the page content
+    '''
     driver = create_driver_od()
     # open the provided URL using the global chrome driver
     driver.get(url)
@@ -43,6 +53,10 @@ def get_page(url, delay=5):
 
 
 def get_makes():
+    '''
+    Function to get and filter through all the makes of cars on the autotrader website
+    :return: array of makes that have more than 5000 listings
+    '''
     # create an empty array to store makes temporarily
     res = []
 
@@ -69,6 +83,11 @@ def get_makes():
 
 
 def get_image_src(listing_id):
+    '''
+    Function to get the image source URL of a listing
+    :param listing_id: id of the listing to get the image from
+    :return: string of the image source URL
+    '''
     # get the content of the listing and store as bs4 object
     bs4content = get_page('https://www.autotrader.co.uk/car-details/' + listing_id, 5)
 
@@ -80,7 +99,13 @@ def get_image_src(listing_id):
 
 
 def upload_to_bucket(bucket_name, bucket_path, local_path):
-
+    '''
+    Function to upload a file to a google cloud storage bucket
+    :param bucket_name: name of the bucket to upload to
+    :param bucket_path: path to upload the file to within the bucket
+    :param local_path: local path of the file to upload
+    :return: nothing is returned
+    '''
     try:
         # use service account credentials by specifying the private key file.
         storage_client = storage.Client.from_service_account_json('./service_account.json')
@@ -93,6 +118,13 @@ def upload_to_bucket(bucket_name, bucket_path, local_path):
 
 
 def save_image(make, listing_id, location):
+    '''
+    Function to save an image from a listing to a local directory or a google cloud storage bucket
+    :param make: make of the vehicle in the image
+    :param listing_id: listing id of the advert holding the image
+    :param location: location to save the image to, either 'local' or 'bucket'
+    :return: nothing is returned
+    '''
     # use the make of the image to construct a path to place the image in
     local_path = ('./data/' + make + '/').replace(' ', '_')
     full_local_path = ('./data/' + make + '/').replace(' ', '_') + listing_id + '.jpg'
@@ -109,7 +141,7 @@ def save_image(make, listing_id, location):
         if src == '':
             # Raise the custom error
             raise ImageNotFoundError
-        urllib.request.urlretrieve(src, local_path+listing_id+'.jpg')
+        urllib.request.urlretrieve(src, local_path + listing_id + '.jpg')
 
         if location == 'bucket':
             # move image to the bucket
@@ -123,6 +155,13 @@ def save_image(make, listing_id, location):
 
 
 def find_and_save_listings(make, location, page=1):
+    '''
+    Function to find and save all listings for a make of car
+    :param make: make of the car to find and save listings for
+    :param location: location to save the images to, either 'local' or 'bucket'
+    :param page: page number to start search, default is 1
+    :return: nothing is returned
+    '''
     # formulate search URL for make, sorted by relevance, set to the first page
     url = 'https://www.autotrader.co.uk/car-search?make=' + make + '&postcode=WC2N%205DU&sort=relevance&page=' + str(
         page)
@@ -155,23 +194,17 @@ def find_and_save_listings(make, location, page=1):
             find_and_save_listings(make, location, page)
 
 
-def move_images(item, path, arr):
-    for image in arr:
-        # move image into final directory
-        src = item + '/' + image
-        dest = './data/' + path + '/' + item[7:]
-
-        if not os.path.exists(dest):
-            os.makedirs(dest)
-
-        os.replace(src, dest + '/' + image)
-
-
 def initial_cleanup(location):
+    '''
+    Function to clean up the local data directory and the google cloud storage bucket
+    :param location: location to clean up, either 'local' or 'bucket'
+    :return: nothing is returned
+    '''
     # as part of the initial cleanup, if './data' exists, delete it and all nested directories
     if os.path.exists('./data'):
         print('Wiping Local Data Directory')
         shutil.rmtree('./data', ignore_errors=True)
+    os.mkdir('./data')
 
     # empty the google cloud bucket if the location is 'bucket'
     if location == 'bucket':
@@ -185,29 +218,24 @@ def initial_cleanup(location):
 
 
 if __name__ == '__main__':
+    # Will only work with the location set to 'local' as service account is not provided
     print("Started Program")
 
-    # not to be run using bucket - this requires a service account json as well as an existing GCS Bucket
-    location = 'local' # This can be set to 'bucket' or 'local'
+    location = 'local'  # This can be set to 'bucket' or 'local'
     initial_cleanup(location)
 
+    print('Getting Makes')
     makes = get_makes()
-    print('makes')
     print(makes)
 
-    # idenfity any completed makes - only works when initial cleanup is disabled
     completed = []
     for make in next(os.walk('./data'))[1]:
         completed.append(make)
-    print('completed')
-    print(completed)
+    print('already completed ' + str(completed))
 
-    # filter out any completed makes
+    # get an array of makes to download
     makes = [i for i in makes if i not in completed]
-    print('makes-to-do')
-    print(makes)
 
-    # find and save all listings for each make
     print('Finding Listings and Saving Images\n')
     progress = tqdm(makes, colour='green')
     for make in progress:

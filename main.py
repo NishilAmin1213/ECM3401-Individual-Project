@@ -278,7 +278,7 @@ def input_window():
 
 
 if __name__ == '__main__':
-
+    os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
     print("Program Started - ML ANPR CAMERA GUI")
 
     global vcor_IMAGE_SIZE, vmr_IMAGE_SIZE
