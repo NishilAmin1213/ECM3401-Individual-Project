@@ -1,3 +1,5 @@
+Please Note - The serialized models are no longer available at the link below 
+
 #### Quick Start
 This section contains commands to start the project, more description and information can be read below starting from the introduction section.
 1) Open the terminal and navigate to the '' directory containing the python files, readme and requirements.txt
